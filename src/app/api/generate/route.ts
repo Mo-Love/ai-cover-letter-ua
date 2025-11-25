@@ -1,3 +1,4 @@
+// src/app/api/generate/route.ts — FINAL WORKING VERSION
 import { Groq } from "groq-sdk";
 
 const groq = new Groq({
