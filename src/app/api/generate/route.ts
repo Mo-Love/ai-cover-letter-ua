@@ -26,21 +26,14 @@ ${jobText}
 
 Після листа додай розділ "Чому цей лист працює" (3–5 пунктів).`;
 
-  try {
-    const completion = await groq.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "llama-3.3-70b-versatile",
-      temperature: 0.7,
-      max_tokens: 1200,
-    });
+  const completion = await groq.chat.completions.create({
+    messages: [{ role: "user", content: prompt }],
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.7,
+    max_tokens: 1200,
+  });
 
-    return Response.json({
-      letter: completion.choices[0]?.message?.content || "Помилка генерації",
-    });
-  } catch (error: any) {
-    return Response.json(
-      { error: error?.error?.message || "Не вдалося згенерувати" },
-      { status: 500 }
-    );
-  }
+  return Response.json({
+    letter: completion.choices[0]?.message?.content || "Помилка генерації",
+  });
 }
