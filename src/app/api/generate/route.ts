@@ -1,4 +1,3 @@
-// src/app/api/generate/route.ts — FINAL WORKING VERSION
 import { Groq } from "groq-sdk";
 
 const groq = new Groq({
@@ -11,7 +10,7 @@ export async function POST(req: Request) {
   const resumeText = typeof resume === "string" ? resume.slice(0, 2000) : "Резюме додано";
   const jobText = typeof jobDescription === "string" ? jobDescription.slice(0, 4000) : "";
 
-  const prompt = `Ти — найкращий кар'єрний коуч України.
+  const prompt = `Ти - найкращий кар'єрний коуч України.
 
 Напиши потужний супровідний лист на ${language} мові.
 
@@ -24,7 +23,7 @@ ${jobText}
 250–350 слів, з цифрами, щиро, без кліше.
 Закінчи сильним CTA.
 
-Після листа додай розділ "Чому цей лист працює" (3–5 пунктів).`;
+Після листа додай розділ "Чому цей лист працює" (3-5 пунктів).`;
 
   const completion = await groq.chat.completions.create({
     messages: [{ role: "user", content: prompt }],
