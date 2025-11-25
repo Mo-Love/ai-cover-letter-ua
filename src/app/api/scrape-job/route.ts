@@ -8,31 +8,23 @@ const groq = new Groq({
 export async function POST(req: Request) {
   const { resume, jobDescription, language = "Українська" } = await req.json();
 
-  let resumeText = typeof resume === "string" ? resume : "Резюме додано";
-
-  if (resumeText.startsWith("PDF_BASE64:")) {
-    resumeText = "Користувач завантажив PDF резюме. Витягни з нього ключові навички, досвід і досягнення.";
-  }
+  let resumeText = typeof resume === "string" ? resume.slice(0, 2000) : "Резюме додано";
+  const cleanJob = typeof jobDescription === "string" ? jobDescription.slice(0, 4000) : "";
 
   const prompt = `Ти — найкращий кар'єрний коуч України.
 
-Напиши ВБИВЧИЙ супровідний лист на ${language} мові.
+Напиши потужний супровідний лист на ${language} мові.
 
-Резюме кандидата:
+Резюме кандидата (скорочено):
 ${resumeText}
 
-Вакансія:
-${jobDescription}
+Вакансія (скорочено):
+${cleanJob}
 
-Вимоги:
-- 250–350 слів
-- Конкретні досягнення з резюме (якщо є цифри — використовуй)
-- Чому саме ця компанія і чому зараз
-- Тон: щирий, людяний, без кліше типу "passionate about"
-- Закінчи потужним CTA
+250–350 слів, конкретні цифри, чому ця компанія, щирий тон, без кліше.
+Закінчи сильним CTA.
 
-Після листа додай розділ:
-"Чому цей лист працює:" (3–5 коротких пункти)`;
+Після листа додай розділ "Чому цей лист працює" (3–5 пунктів).`;
 
   try {
     const completion = await groq.chat.completions.create({
@@ -46,9 +38,9 @@ ${jobDescription}
 
     return Response.json({ letter });
   } catch (error: any) {
-    console.error("Groq error:", error);
-    return Response.json({ 
-      error: error?.error?.message || "Не вдалося згенерувати лист" 
-    }, { status: 500 });
+    return Response.json(
+      { error: error?.error?.message || "Не вдалося згенерувати" },
+      { status: 500 }
+    );
   }
 }
