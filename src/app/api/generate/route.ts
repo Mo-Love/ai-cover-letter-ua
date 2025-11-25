@@ -12,6 +12,7 @@ export async function POST(req: Request) {
 
   const prompt = `Ти — найкращий кар'єрний коуч України.
 
+<<<<<<< HEAD
 Напиши потужний супровідний лист на ${language} мові.
 
 Резюме кандидата:
@@ -34,5 +35,24 @@ ${jobText}
 
   return Response.json({
     letter: completion.choices[0]?.message?.content || "Помилка генерації",
+=======
+Напиши супровідний лист на ${language} мові.
+
+Резюме: ${resumeText}
+Вакансія: ${jobText}
+
+250–350 слів, з цифрами, щиро, без кліше, сильний CTA в кінці.
+Після листа додай розділ "Чому цей лист працює" (3–5 пунктів).`;
+
+  const completion = await groq.chat.completions.create({
+    messages: [{ role: "user", content: prompt }],
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.7,
+    max_tokens: 1200,
+  });
+
+  return Response.json({
+    letter: completion.choices[0]?.message?.content || "Помилка",
+>>>>>>> 83f2224 (clean launch: ready for Vercel, no config issues)
   });
 }

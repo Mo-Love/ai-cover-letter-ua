@@ -1,4 +1,9 @@
 .env.local
 .env
-node_modules
+.node_modules
 .next
+.vercel
+dist
+node_modules/
+.next/
+.vercel
