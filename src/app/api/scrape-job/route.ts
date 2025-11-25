@@ -2,16 +2,39 @@
 export async function POST(req: Request) {
   const { url } = await req.json();
 
-  // Простий скрапер через сторонній сервіс (безплатний)
-  const response = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
-  const html = await response.text();
+  try {
+    // Стабільний проксі 2025 — corsproxy.io (з Reddit/G2, без Cloudflare-блоків)
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    const response = await fetch(proxyUrl, { 
+      timeout: 15000, // 15 сек таймаут
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } // імітація браузера
+    });
 
-  // Видаляємо теги і залишаємо чистий текст
-  const text = html.replace(/<script[\s\S]*?<\/script>/gi, "")
-                   .replace(/<style[\s\S]*?<\/style>/gi, "")
-                   .replace(/<[^>]*>/g, " ")
-                   .replace(/\s+/g, " ")
-                   .trim();
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
 
-  return Response.json({ text: text.slice(0, 10000) }); // обмежуємо довжину
+    const html = await response.text();
+
+    // Очищуємо HTML
+    const text = html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // видаляємо скрипти
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '') // видаляємо стилі
+      .replace(/<[^>]*>/g, ' ') // видаляємо теги
+      .replace(/\s+/g, ' ') // пробіли
+      .trim()
+      .slice(0, 6000); // 6k символів
+
+    if (text.length < 100) {
+      throw new Error('Недостатньо тексту');
+    }
+
+    return Response.json({ text });
+  } catch (error) {
+    console.error('Scrape error:', error);
+    return Response.json({ 
+      error: "Не вдалося витягнути текст з сайту (проблема з сервером). Вставте опис вакансії вручну в поле нижче.",
+      text: '' 
+    });
+  }
 }

@@ -1,58 +1,52 @@
-// src/app/api/generate/route.ts
+// src/app/api/generate/route.ts — остаточна версія 2025
 import { Groq } from "groq-sdk";
-import PDFParser from "pdf2json";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  apiKey: process.env.GROQ_API_KEY 
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 export async function POST(req: Request) {
-  const { resume, jobDescription } = await req.json();
+  const { resume, jobDescription, language = "Українська" } = await req.json();
 
-  let resumeText = resume;
-
-  // Якщо прийшов PDF (base64)
-  if (typeof resume === "string" && resume.startsWith("PDF_BASE64:")) {
-    try {
-      const base64 = resume.replace("PDF_BASE64:", "");
-      const buffer = Buffer.from(base64, "base64");
-
-      // Парсимо з pdf2json
-      const pdfParser = new PDFParser();
-      const data = await new Promise<any>((resolve, reject) => {
-        pdfParser.on("pdfParser_dataError", reject);
-        pdfParser.on("pdfParser_dataReady", resolve);
-        pdfParser.parseBuffer(buffer);
-      });
-
-      // Витягуємо текст з сторінок
-      resumeText = data.Pages.map((page: any) => 
-        page.Texts.map((text: any) => decodeURIComponent(text.R[0].T)).join(" ")
-      ).join("\n");
-    } catch (e) {
-      return Response.json({ error: "Не вдалось прочитати PDF" }, { status: 400 });
-    }
-  }
+  // Обрізаємо, щоб не було 400 помилки
+  const cleanResume = typeof resume === "string" ? resume.slice(0, 2000) : "Резюме додано";
+  const cleanJob = typeof jobDescription === "string" ? jobDescription.slice(0, 4000) : "Вакансія додана";
 
   const prompt = `Ти — найкращий кар'єрний коуч України.
 
-Напиши ВБИВЧИЙ супровідний лист українською.
+Напиши ВБИВЧИЙ супровідний лист на ${language} мові.
 
-Резюме кандидата:
-${resumeText}
+Резюме кандидата (скорочено):
+${cleanResume}
 
-Вакансія:
-${jobDescription}
+Вакансія (скорочено):
+${cleanJob}
 
-250–350 слів, конкретні цифри, чому саме ця компанія, щирий тон, потужний CTA.
-Після листа додай розділ "Чому цей лист працює:" (3–5 пунктів).`;
+Вимоги:
+- 250–350 слів
+- Конкретні досягнення з резюме (якщо є цифри — використовуй)
+- Чому саме ця компанія і чому зараз
+- Тон: щирий, людяний, без кліше типу "passionate about"
+- Закінчи потужним CTA
 
-  const completion = await groq.chat.completions.create({
-    messages: [{ role: "user", content: prompt }],
-    model: "llama-3.3-70b-versatile",
-    temperature: 0.7,
-    max_tokens: 1300,
-  });
+Після листа додай розділ:
+"Чому цей лист працює:" (3–5 коротких пункти)`;
 
-  return Response.json({ letter: completion.choices[0]?.message?.content });
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.7,
+      max_tokens: 1200,
+    });
+
+    const letter = completion.choices[0]?.message?.content || "Помилка генерації";
+
+    return Response.json({ letter });
+  } catch (error: any) {
+    console.error("Groq error:", error);
+    return Response.json({ 
+      error: error?.error?.message || "Не вдалося згенерувати лист" 
+    }, { status: 500 });
+  }
 }

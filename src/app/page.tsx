@@ -23,6 +23,9 @@ const translations = {
     pdfUploaded: "PDF завантажено!",
     vacancyFetched: "Вакансія завантажена!",
     ready: "Готовий!",
+    pay10: "10 листів за $2",
+    payUnlimited: "Безлім назавжди за $5",
+    payNote: "Після оплати доступ відкриється автоматично",
   },
   en: {
     title: "AI Cover Letter",
@@ -40,6 +43,9 @@ const translations = {
     pdfUploaded: "Resume uploaded!",
     vacancyFetched: "Job posting loaded!",
     ready: "Ready!",
+    pay10: "10 letters for $2",
+    payUnlimited: "Unlimited forever for $5",
+    payNote: "Access opens automatically after payment",
   },
 };
 
@@ -51,13 +57,14 @@ export default function Home() {
   const [letter, setLetter] = useState("");
   const [loadingScrape, setLoadingScrape] = useState(false);
   const [loadingGenerate, setLoadingGenerate] = useState(false);
+  const [hasPaid, setHasPaid] = useState(false);
 
   const t = translations[lang];
 
-  // Автовизначення мови браузера
   useEffect(() => {
-    const browserLang = navigator.language;
-    if (browserLang.startsWith("en")) setLang("en");
+    if (navigator.language.startsWith("en")) setLang("en");
+    const paid = localStorage.getItem("coverletter_paid");
+    if (paid === "true") setHasPaid(true);
   }, []);
 
   const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,7 +96,9 @@ export default function Home() {
       if (data.text) {
         setJobDescription(data.text);
         toast.success(t.vacancyFetched);
-      } else toast.error(lang === "ua" ? "Не вдалось витягнути текст" : "Failed to fetch text");
+      } else {
+        toast.error(data.error || (lang === "ua" ? "Не вдалося витягнути текст" : "Failed to fetch text"));
+      }
     } catch {
       toast.error(lang === "ua" ? "Помилка сервера" : "Server error");
     }
@@ -97,6 +106,10 @@ export default function Home() {
   };
 
   const generate = async () => {
+    if (!hasPaid) {
+      toast.error(lang === "ua" ? "Купи доступ для генерації" : "Buy access to generate");
+      return;
+    }
     if (!resume) return toast.error(lang === "ua" ? "Додай резюме" : "Add resume");
     if (!jobDescription) return toast.error(lang === "ua" ? "Додай вакансію" : "Add job posting");
 
@@ -110,13 +123,15 @@ export default function Home() {
     if (data.letter) {
       setLetter(data.letter);
       toast.success(t.ready);
-    } else toast.error(lang === "ua" ? "Помилка генерації" : "Generation error");
+    } else {
+      toast.error(data.error || (lang === "ua" ? "Помилка генерації" : "Generation error"));
+    }
     setLoadingGenerate(false);
   };
 
   return (
     <>
-      {/* Легкий фон */}
+      {/* Фон */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-blue-900/20" />
         <div className="absolute top-20 -left-32 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl animate-pulse" />
@@ -138,62 +153,61 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Заголовок */}
-        <div className="text-center mb-10 lg:mb-16">
-          <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400">
             {t.title}
           </h1>
-          <p className="text-lg sm:text-xl lg:text-2xl text-purple-200 mt-4">
+          <p className="text-xl lg:text-2xl text-purple-200 mt-4">
             {t.subtitle}
           </p>
         </div>
 
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* ЛІВА ЧАСТИНА */}
-          <div className="space-y-6 lg:space-y-8">
+          {/* Ліва частина */}
+          <div className="space-y-8">
             {/* Резюме */}
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 lg:p-10">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8">
               <div className="flex items-center gap-3 mb-6">
-                <Upload className="w-7 h-7 lg:w-9 lg:h-9 text-purple-400" />
-                <h3 className="text-2xl lg:text-3xl font-bold">{t.resume}</h3>
+                <Upload className="w-8 h-8 text-purple-400" />
+                <h3 className="text-2xl font-bold">{t.resume}</h3>
               </div>
 
               <label className="block cursor-pointer">
                 <input type="file" accept=".pdf" onChange={handlePdfUpload} className="hidden" />
-                <div className="border-2 border-dashed border-purple-500/50 rounded-2xl p-10 lg:p-16 text-center hover:border-purple-400 hover:bg-purple-500/5 transition-all">
-                  <Upload className="w-12 h-12 lg:w-20 lg:h-20 mx-auto mb-4 text-purple-400" />
-                  <p className="text-lg lg:text-xl font-medium">{t.uploadPdf}</p>
+                <div className="border-2 border-dashed border-purple-500/50 rounded-2xl p-12 text-center hover:border-purple-400 transition-all">
+                  <Upload className="w-16 h-16 mx-auto mb-4 text-purple-400" />
+                  <p className="text-xl">{t.uploadPdf}</p>
                 </div>
               </label>
 
               <textarea
                 placeholder={t.resumePlaceholder}
-                value={resume.startsWith("PDF_BASE64:") ? (lang === "ua" ? "PDF завантажено ✓" : "PDF uploaded ✓") : resume}
+                value={resume.startsWith("PDF_BASE64:") ? (lang === "ua" ? "PDF завантажено" : "PDF uploaded") : resume}
                 onChange={(e) => setResume(e.target.value)}
                 rows={4}
-                className="w-full mt-4 p-4 lg:p-6 bg-black/30 border border-white/10 rounded-2xl focus:border-purple-400 focus:ring-4 focus:ring-purple-400/20 transition-all outline-none resize-none text-sm lg:text-base"
+                className="w-full mt-6 p-4 bg-black/30 border border-white/10 rounded-2xl focus:border-purple-400 outline-none resize-none"
               />
             </div>
 
             {/* Вакансія */}
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 lg:p-10">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8">
               <div className="flex items-center gap-3 mb-6">
-                <Link2 className="w-7 h-7 lg:w-9 lg:h-9 text-purple-400" />
-                <h3 className="text-2xl lg:text-3xl font-bold">{t.vacancy}</h3>
+                <Link2 className="w-8 h-8 text-purple-400" />
+                <h3 className="text-2xl font-bold">{t.vacancy}</h3>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex gap-4">
                 <input
                   type="url"
                   placeholder={t.vacancyPlaceholder}
                   value={jobUrl}
                   onChange={(e) => setJobUrl(e.target.value)}
-                  className="flex-1 px-5 py-4 lg:py-5 bg-black/30 border border-white/10 rounded-2xl focus:border-purple-400 focus:ring-4 focus:ring-purple-400/20 outline-none text-sm lg:text-base"
+                  className="flex-1 px-4 py-4 bg-black/30 border border-white/10 rounded-2xl focus:border-purple-400 outline-none"
                 />
                 <button
                   onClick={fetchJobFromUrl}
                   disabled={loadingScrape}
-                  className="relative px-8 py-4 lg:py-5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-bold hover:shadow-2xl hover:shadow-purple-500/50 transition-all"
+                  className="px-8 py-4 bg-purple-600 rounded-2xl font-bold hover:bg-purple-700"
                 >
                   {loadingScrape ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : t.fetchText}
                 </button>
@@ -204,44 +218,73 @@ export default function Home() {
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 rows={6}
-                className="w-full mt-4 p-4 lg:p-6 bg-black/30 border border-white/10 rounded-2xl focus:border-purple-400 focus:ring-4 focus:ring-purple-400/20 transition-all outline-none resize-none text-sm lg:text-base"
+                className="w-full mt-4 p-4 bg-black/30 border border-white/10 rounded-2xl focus:border-purple-400 outline-none resize-none"
               />
             </div>
 
+            {/* Gumroad оплата */}
+            {!hasPaid && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* $2 */}
+                <a
+                  href="https://mochalove2.gumroad.com/l/loqdhq"
+                  target="_blank"
+                  className="block p-8 bg-gradient-to-br from-green-600 to-emerald-700 rounded-3xl text-center hover:scale-105 transition-all"
+                >
+                  <div className="text-5xl font-bold mb-2">$2</div>
+                  <div className="text-xl font-bold">10 листів</div>
+                </a>
+
+                {/* $5 */}
+                <a
+                  href="https://mochalove2.gumroad.com/l/ktoty"
+                  target="_blank"
+                  className="block p-8 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-700 rounded-3xl text-center hover:scale-110 transition-all ring-4 ring-yellow-400"
+                >
+                  <div className="text-6xl font-bold mb-2">$5</div>
+                  <div className="text-2xl font-bold text-yellow-300">Безлім назавжди</div>
+                </a>
+              </div>
+            )}
+
             {/* Генерація */}
-            <button
-              onClick={generate}
-              disabled={loadingGenerate}
-              className="w-full py-6 lg:py-8 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700 rounded-3xl font-black text-2xl lg:text-3xl shadow-2xl hover:shadow-purple-500/50 hover:scale-[1.02] transition-all duration-300"
-            >
-              {loadingGenerate ? (
-                <>{t.generating} <Loader2 className="inline w-8 h-8 ml-3 animate-spin" /></>
-              ) : (
-                <>{t.generate} <Sparkles className="inline w-8 h-8 ml-3" /></>
-              )}
-            </button>
+            {hasPaid && (
+              <button
+                onClick={generate}
+                disabled={loadingGenerate}
+                className="w-full py-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl font-bold text-3xl hover:scale-105 transition-all"
+              >
+                {loadingGenerate ? t.generating : t.generate}
+              </button>
+            )}
           </div>
 
-          {/* РЕЗУЛЬТАТ */}
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 lg:p-12">
+          {/* Результат */}
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-12">
             <div className="flex items-center gap-3 mb-6">
-              <FileText className="w-8 h-8 lg:w-10 lg:h-10 text-purple-400" />
-              <h3 className="text-2xl lg:text-3xl font-bold">{t.result}</h3>
+              <FileText className="w-10 h-10 text-purple-400" />
+              <h3 className="text-3xl font-bold">{t.result}</h3>
             </div>
 
             {letter ? (
-              <div className="prose prose-invert prose-lg max-w-none leading-relaxed text-gray-100 text-sm lg:text-base">
+              <div className="prose prose-invert max-w-none text-lg leading-relaxed">
                 {letter.split("\n").map((line, i) => (
                   <p key={i} className="mb-4">{line || <br />}</p>
                 ))}
               </div>
             ) : (
-              <p className="text-center text-purple-300/60 text-lg lg:text-2xl py-20 lg:py-32">
+              <p className="text-center text-purple-300/60 text-2xl py-32">
                 {t.resultPlaceholder}
               </p>
             )}
           </div>
         </div>
+
+        {!hasPaid && (
+          <p className="text-center text-purple-300 mt-12">
+            {t.payNote}
+          </p>
+        )}
       </div>
     </>
   );
