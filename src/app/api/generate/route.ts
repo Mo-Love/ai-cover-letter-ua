@@ -1,4 +1,4 @@
-// src/app/api/generate/route.ts — остаточна версія 2025
+// src/app/api/generate/route.ts
 import { Groq } from "groq-sdk";
 
 const groq = new Groq({
@@ -8,29 +8,23 @@ const groq = new Groq({
 export async function POST(req: Request) {
   const { resume, jobDescription, language = "Українська" } = await req.json();
 
-  // Обрізаємо, щоб не було 400 помилки
-  const cleanResume = typeof resume === "string" ? resume.slice(0, 2000) : "Резюме додано";
-  const cleanJob = typeof jobDescription === "string" ? jobDescription.slice(0, 4000) : "Вакансія додана";
+  const resumeText = typeof resume === "string" ? resume.slice(0, 2000) : "Резюме додано";
+  const jobText = typeof jobDescription === "string" ? jobDescription.slice(0, 4000) : "";
 
   const prompt = `Ти — найкращий кар'єрний коуч України.
 
 Напиши ВБИВЧИЙ супровідний лист на ${language} мові.
 
-Резюме кандидата (скорочено):
-${cleanResume}
+Резюме кандидата:
+${resumeText}
 
-Вакансія (скорочено):
-${cleanJob}
+Вакансія:
+${jobText}
 
-Вимоги:
-- 250–350 слів
-- Конкретні досягнення з резюме (якщо є цифри — використовуй)
-- Чому саме ця компанія і чому зараз
-- Тон: щирий, людяний, без кліше типу "passionate about"
-- Закінчи потужним CTA
+250–350 слів, з цифрами, щиро, без кліше типу "passionate about".
+Закінчи потужним CTA.
 
-Після листа додай розділ:
-"Чому цей лист працює:" (3–5 коротких пункти)`;
+Після листа додай розділ "Чому цей лист працює" (3–5 пунктів).`;
 
   try {
     const completion = await groq.chat.completions.create({
@@ -40,13 +34,13 @@ ${cleanJob}
       max_tokens: 1200,
     });
 
-    const letter = completion.choices[0]?.message?.content || "Помилка генерації";
-
-    return Response.json({ letter });
+    return Response.json({
+      letter: completion.choices[0]?.message?.content || "Помилка генерації",
+    });
   } catch (error: any) {
-    console.error("Groq error:", error);
-    return Response.json({ 
-      error: error?.error?.message || "Не вдалося згенерувати лист" 
-    }, { status: 500 });
+    return Response.json(
+      { error: error?.error?.message || "Не вдалося згенерувати" },
+      { status: 500 }
+    );
   }
 }
